@@ -3,8 +3,7 @@ import socket
 ACCEPTED_BUFFSIZE = 1024
 """Accepted request buffer size by the socket server."""
 
-ROOT_PATH = "/"
-"""Represents the root path of the server."""
+ECHO_PATH = "/echo/"
 
 
 def main() -> None:
@@ -15,12 +14,14 @@ def main() -> None:
 
     _method, path, *_rest = buffer.decode().split()
 
-    if path == ROOT_PATH:
-        response = b"HTTP/1.1 200 OK\r\n\r\n"
-    else:
-        response = b"HTTP/1.1 404 OK\r\n\r\n"
+    if path.startswith(ECHO_PATH):
+        random_string = path.replace(ECHO_PATH, "", 1)
 
-    connection.send(response)
+        response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n{random_string}"
+    else:
+        response = "HTTP/1.1 404 OK\r\n\r\n"
+
+    connection.send(response.encode())
 
 
 if __name__ == "__main__":
