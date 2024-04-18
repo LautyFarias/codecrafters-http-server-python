@@ -22,7 +22,7 @@ def main() -> None:
 
     _method, path, *_rest = buffer.decode().split()
 
-    if Route.ROOT:
+    if path == Route.ROOT:
         response = "HTTP/1.1 200 OK\r\n\r\n"
 
     elif path.startswith(Route.ECHO):
