@@ -27,7 +27,12 @@ def main() -> None:
 
     elif path.startswith(Route.ECHO):
         random_string = path.replace(Route.ECHO, "", 1)
-        response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n{random_string}"
+        response = (
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: text/plain\r\n"
+            f"Content-Length: {len(random_string)}\r\n\r\n"
+            f"{random_string}"
+        )
 
     else:
         response = "HTTP/1.1 404 OK\r\n\r\n"
