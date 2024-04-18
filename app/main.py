@@ -11,6 +11,7 @@ class Route(enum.StrEnum):
     """
 
     ROOT = "/"
+    USER_AGENT = "/user-agent"
     ECHO = "/echo/"
 
 
@@ -20,7 +21,8 @@ def main() -> None:
 
     buffer = connection.recv(ACCEPTED_BUFFSIZE)
 
-    _method, path, *_rest = buffer.decode().split()
+    metadata, *headers = buffer.decode().split("\r\n")
+    _method, path, _version = metadata.split()
 
     if path == Route.ROOT:
         response = "HTTP/1.1 200 OK\r\n\r\n"
@@ -32,6 +34,16 @@ def main() -> None:
             "Content-Type: text/plain\r\n"
             f"Content-Length: {len(random_string)}\r\n\r\n"
             f"{random_string}"
+        )
+
+    elif path.startswith(Route.USER_AGENT):
+        user_agent = next(header for header in headers if "User-Agent" in header)
+
+        response = (
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: text/plain\r\n"
+            f"Content-Length: {len(user_agent)}\r\n\r\n"
+            f"{user_agent}"
         )
 
     else:
