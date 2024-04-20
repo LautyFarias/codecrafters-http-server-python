@@ -53,24 +53,25 @@ def handle_connection(connection: socket.socket) -> None:
         metadata, *headers = buffer.decode().split("\r\n")
         _method, path, _version = metadata.split()
 
-        if path == Route.ROOT:
-            response = Response()
+        match path:
+            case Route.ROOT:
+                response = Response()
 
-        elif path.startswith(Route.ECHO):
-            random_string = path.replace(Route.ECHO, "", 1)
-            response = Response(data=random_string)
+            case path if path.startswith(Route.ECHO):
+                random_string = path.replace(Route.ECHO, "", 1)
+                response = Response(data=random_string)
 
-        elif path.startswith(Route.USER_AGENT):
-            user_agent_header = next(
-                header for header in headers if "User-Agent" in header
-            )
+            case path if path.startswith(Route.USER_AGENT):
+                user_agent_header = next(
+                    header for header in headers if "User-Agent" in header
+                )
 
-            _header, user_agent = user_agent_header.split(":")
+                _header, user_agent = user_agent_header.split(":")
 
-            response = Response(data=user_agent.strip())
+                response = Response(data=user_agent.strip())
 
-        else:
-            response = Response(Status.NOT_FOUND)
+            case _:
+                response = Response(Status.NOT_FOUND)
 
         connection.send(bytes(response))
 
