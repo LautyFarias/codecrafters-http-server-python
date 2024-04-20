@@ -62,9 +62,11 @@ def main() -> None:
         response = Response(data=random_string)
 
     elif path.startswith(Route.USER_AGENT):
-        user_agent = next(header for header in headers if "User-Agent" in header)
+        user_agent_header = next(header for header in headers if "User-Agent" in header)
 
-        response = Response(data=user_agent)
+        _header, user_agent = user_agent_header.split(":")
+
+        response = Response(data=user_agent.strip())
 
     else:
         response = Response(Status.NOT_FOUND)
