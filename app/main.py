@@ -31,16 +31,12 @@ class Response:
         self.content_length = len(data)
 
     def __bytes__(self) -> bytes:
-        response = f"{self.version} {self.status}\r\n"
-
-        if self.data:
-            response += (
-                f"Content-Type: {self.content_type}\r\n"
-                f"Content-Length: {self.content_length}\r\n\r\n"
-                f"{self.data}"
-            )
-        else:
-            response += "\r\n"
+        response = (
+            f"{self.version} {self.status}\r\n"
+            f"Content-Type: {self.content_type}\r\n"
+            f"Content-Length: {self.content_length}\r\n\r\n"
+            f"{self.data}"
+        )
 
         return response.encode()
 
@@ -65,7 +61,9 @@ def main() -> None:
                 response = Response(data=random_string)
 
             elif path.startswith(Route.USER_AGENT):
-                user_agent_header = next(header for header in headers if "User-Agent" in header)
+                user_agent_header = next(
+                    header for header in headers if "User-Agent" in header
+                )
 
                 _header, user_agent = user_agent_header.split(":")
 
