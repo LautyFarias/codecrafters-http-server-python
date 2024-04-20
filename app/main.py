@@ -1,6 +1,9 @@
+import argparse
 import enum
 import socket
+from pathlib import Path
 from threading import Thread
+from typing import Optional
 
 ACCEPTED_BUFFSIZE = 1024
 """Accepted request buffer size by the socket server."""
@@ -14,6 +17,7 @@ class Route(enum.StrEnum):
     ROOT = "/"
     USER_AGENT = "/user-agent"
     ECHO = "/echo/"
+    FILES = "/files/"
 
 
 class Status(enum.StrEnum):
@@ -23,10 +27,15 @@ class Status(enum.StrEnum):
 
 class Response:
     version = "HTTP/1.1"
-    content_type = "text/plain"
 
-    def __init__(self, status: Status = Status.OK, data: str = "") -> None:
+    def __init__(
+        self,
+        status: Status = Status.OK,
+        data: str = "",
+        content_type: str = "text/plain",
+    ) -> None:
         self.status = status
+        self.content_type = content_type
 
         self.data = data
         self.content_length = len(data)
@@ -46,7 +55,7 @@ class Response:
         return response.encode()
 
 
-def handle_connection(connection: socket.socket) -> None:
+def handle_connection(connection: socket.socket, media_directory: Path) -> None:
     with connection:
         buffer = connection.recv(ACCEPTED_BUFFSIZE)
 
@@ -70,21 +79,46 @@ def handle_connection(connection: socket.socket) -> None:
 
                 response = Response(data=user_agent.strip())
 
+            case path if path.startswith(Route.FILES):
+                filename = path.split("/", 2)[-1]
+                media_path = media_directory / filename
+
+                if not media_path.exists():
+                    response = Response(Status.NOT_FOUND)
+
+                else:
+                    with open(media_path, "r") as file:
+                        response = Response(
+                            data=file.read(), content_type="application/octet-stream"
+                        )
+
             case _:
                 response = Response(Status.NOT_FOUND)
 
         connection.send(bytes(response))
 
 
-def main() -> None:
+def main(media_directory: Optional[Path] = None) -> None:
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
 
     while True:
         connection, _client_address = server_socket.accept()  # wait for client
 
-        thread = Thread(target=handle_connection, args=(connection,))
+        thread = Thread(target=handle_connection, args=(connection, media_directory))
         thread.start()
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Run a http server")
+
+    parser.add_argument(
+        "--directory",
+        metavar="path/to/directory",
+        type=Path,
+        nargs="?",
+        help="The media directory of the server",
+    )
+
+    args = parser.parse_args()
+
+    main(args.directory)
