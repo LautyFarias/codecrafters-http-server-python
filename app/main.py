@@ -1,5 +1,6 @@
 import enum
 import socket
+from threading import Thread
 
 ACCEPTED_BUFFSIZE = 1024
 """Accepted request buffer size by the socket server."""
@@ -45,39 +46,43 @@ class Response:
         return response.encode()
 
 
+def handle_connection(connection: socket.socket) -> None:
+    with connection:
+        buffer = connection.recv(ACCEPTED_BUFFSIZE)
+
+        metadata, *headers = buffer.decode().split("\r\n")
+        _method, path, _version = metadata.split()
+
+        if path == Route.ROOT:
+            response = Response()
+
+        elif path.startswith(Route.ECHO):
+            random_string = path.replace(Route.ECHO, "", 1)
+            response = Response(data=random_string)
+
+        elif path.startswith(Route.USER_AGENT):
+            user_agent_header = next(
+                header for header in headers if "User-Agent" in header
+            )
+
+            _header, user_agent = user_agent_header.split(":")
+
+            response = Response(data=user_agent.strip())
+
+        else:
+            response = Response(Status.NOT_FOUND)
+
+        connection.send(bytes(response))
+
+
 def main() -> None:
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
 
     while True:
         connection, _client_address = server_socket.accept()  # wait for client
 
-        with connection:
-            buffer = connection.recv(ACCEPTED_BUFFSIZE)
-
-            metadata, *headers = buffer.decode().split("\r\n")
-            _method, path, _version = metadata.split()
-
-            if path == Route.ROOT:
-                response = Response()
-
-            elif path.startswith(Route.ECHO):
-                random_string = path.replace(Route.ECHO, "", 1)
-                response = Response(data=random_string)
-
-            elif path.startswith(Route.USER_AGENT):
-                user_agent_header = next(
-                    header for header in headers if "User-Agent" in header
-                )
-
-                _header, user_agent = user_agent_header.split(":")
-
-                response = Response(data=user_agent.strip())
-
-            else:
-                response = Response(Status.NOT_FOUND)
-
-            connection.send(bytes(response))
-            connection.close()
+        thread = Thread(target=handle_connection, args=(connection,))
+        thread.start()
 
 
 if __name__ == "__main__":
