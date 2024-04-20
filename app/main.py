@@ -55,6 +55,11 @@ class Response:
         return response.encode()
 
 
+class NotFoundResponse(Response):
+    def __init__(self) -> None:
+        super().__init__(Status.NOT_FOUND)
+
+
 def handle_connection(connection: socket.socket, media_directory: Path) -> None:
     with connection:
         buffer = connection.recv(ACCEPTED_BUFFSIZE)
@@ -84,7 +89,7 @@ def handle_connection(connection: socket.socket, media_directory: Path) -> None:
                 media_path = media_directory / filename
 
                 if not media_path.exists():
-                    response = Response(Status.NOT_FOUND)
+                    response = NotFoundResponse()
 
                 else:
                     with open(media_path, "r") as file:
@@ -93,7 +98,7 @@ def handle_connection(connection: socket.socket, media_directory: Path) -> None:
                         )
 
             case _:
-                response = Response(Status.NOT_FOUND)
+                response = NotFoundResponse()
 
         connection.send(bytes(response))
 
