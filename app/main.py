@@ -39,6 +39,8 @@ class Response:
                 f"Content-Length: {self.content_length}\r\n\r\n"
                 f"{self.data}"
             )
+        else:
+            response += "\r\n\r\n"
 
         return response.encode()
 
