@@ -31,12 +31,14 @@ class Response:
         self.content_length = len(data)
 
     def __bytes__(self) -> bytes:
-        response = (
-            f"{self.version} {self.status}\r\n"
-            f"Content-Type: {self.content_type}\r\n"
-            f"Content-Length: {self.content_length}\r\n\r\n"
-            f"{self.data}"
-        )
+        response = f"{self.version} {self.status}\r\n"
+
+        if self.data:
+            response += (
+                f"Content-Type: {self.content_type}\r\n"
+                f"Content-Length: {self.content_length}\r\n\r\n"
+                f"{self.data}"
+            )
 
         return response.encode()
 
