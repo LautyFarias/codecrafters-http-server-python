@@ -15,6 +15,36 @@ class Route(enum.StrEnum):
     ECHO = "/echo/"
 
 
+class Status(enum.StrEnum):
+    OK = "200 OK"
+    NOT_FOUND = "404 Not Found"
+
+
+class Response:
+    version = "HTTP/1.1"
+    content_type = "text/plain"
+
+    def __init__(self, status: Status = Status.OK, data: str = "") -> None:
+        self.status = status
+
+        self.data = data
+        self.content_length = len(data)
+
+    def __bytes__(self) -> bytes:
+        response = f"{self.version} {self.status}\r\n"
+
+        if self.data:
+            response += (
+                f"Content-Type: {self.content_type}\r\n"
+                f"Content-Length: {self.content_length}\r\n\r\n"
+                f"{self.data}"
+            )
+        else:
+            response += "\r\n"
+
+        return response.encode()
+
+
 def main() -> None:
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
     connection, _client_address = server_socket.accept()  # wait for client
@@ -25,31 +55,21 @@ def main() -> None:
     _method, path, _version = metadata.split()
 
     if path == Route.ROOT:
-        response = "HTTP/1.1 200 OK\r\n\r\n"
+        response = Response()
 
     elif path.startswith(Route.ECHO):
         random_string = path.replace(Route.ECHO, "", 1)
-        response = (
-            "HTTP/1.1 200 OK\r\n"
-            "Content-Type: text/plain\r\n"
-            f"Content-Length: {len(random_string)}\r\n\r\n"
-            f"{random_string}"
-        )
+        response = Response(data=random_string)
 
     elif path.startswith(Route.USER_AGENT):
         user_agent = next(header for header in headers if "User-Agent" in header)
 
-        response = (
-            "HTTP/1.1 200 OK\r\n"
-            "Content-Type: text/plain\r\n"
-            f"Content-Length: {len(user_agent)}\r\n\r\n"
-            f"{user_agent}"
-        )
+        response = Response(data=user_agent)
 
     else:
-        response = "HTTP/1.1 404 OK\r\n\r\n"
+        response = Response(Status.NOT_FOUND)
 
-    connection.send(response.encode())
+    connection.send(bytes(response))
 
 
 if __name__ == "__main__":
