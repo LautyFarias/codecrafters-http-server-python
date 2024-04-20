@@ -47,31 +47,34 @@ class Response:
 
 def main() -> None:
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
-    connection, _client_address = server_socket.accept()  # wait for client
 
-    buffer = connection.recv(ACCEPTED_BUFFSIZE)
+    while True:
+        connection, _client_address = server_socket.accept()  # wait for client
 
-    metadata, *headers = buffer.decode().split("\r\n")
-    _method, path, _version = metadata.split()
+        with connection:
+            buffer = connection.recv(ACCEPTED_BUFFSIZE)
 
-    if path == Route.ROOT:
-        response = Response()
+            metadata, *headers = buffer.decode().split("\r\n")
+            _method, path, _version = metadata.split()
 
-    elif path.startswith(Route.ECHO):
-        random_string = path.replace(Route.ECHO, "", 1)
-        response = Response(data=random_string)
+            if path == Route.ROOT:
+                response = Response()
 
-    elif path.startswith(Route.USER_AGENT):
-        user_agent_header = next(header for header in headers if "User-Agent" in header)
+            elif path.startswith(Route.ECHO):
+                random_string = path.replace(Route.ECHO, "", 1)
+                response = Response(data=random_string)
 
-        _header, user_agent = user_agent_header.split(":")
+            elif path.startswith(Route.USER_AGENT):
+                user_agent_header = next(header for header in headers if "User-Agent" in header)
 
-        response = Response(data=user_agent.strip())
+                _header, user_agent = user_agent_header.split(":")
 
-    else:
-        response = Response(Status.NOT_FOUND)
+                response = Response(data=user_agent.strip())
 
-    connection.send(bytes(response))
+            else:
+                response = Response(Status.NOT_FOUND)
+
+            connection.send(bytes(response))
 
 
 if __name__ == "__main__":
