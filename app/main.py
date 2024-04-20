@@ -8,16 +8,18 @@ from typing import Optional
 ACCEPTED_BUFFSIZE = 1024
 """Accepted request buffer size by the socket server."""
 
+USER_AGENT_HEADER = "User-Agent"
+
 
 class Route(enum.StrEnum):
     """
     Enumeration of available routes.
     """
 
-    ROOT = "/"
-    USER_AGENT = "/user-agent"
-    ECHO = "/echo/"
-    FILES = "/files/"
+    ROOT = ""
+    USER_AGENT = "user-agent"
+    ECHO = "echo"
+    FILES = "files"
 
 
 class Status(enum.StrEnum):
@@ -67,25 +69,27 @@ def handle_connection(connection: socket.socket, media_directory: Path) -> None:
         metadata, *headers = buffer.decode().split("\r\n")
         _method, path, _version = metadata.split()
 
-        match path:
+        path = path.split("/", 2)
+
+        match path[1]:
             case Route.ROOT:
                 response = Response()
 
-            case path if path.startswith(Route.ECHO):
-                random_string = path.replace(Route.ECHO, "", 1)
+            case Route.ECHO:
+                random_string = path[-1]
                 response = Response(data=random_string)
 
-            case path if path.startswith(Route.USER_AGENT):
+            case Route.USER_AGENT:
                 user_agent_header = next(
-                    header for header in headers if "User-Agent" in header
+                    header for header in headers if USER_AGENT_HEADER in header
                 )
 
                 _header, user_agent = user_agent_header.split(":")
 
                 response = Response(data=user_agent.strip())
 
-            case path if path.startswith(Route.FILES):
-                filename = path.split("/", 2)[-1]
+            case Route.FILES:
+                filename = path[-1]
                 media_path = media_directory / filename
 
                 if not media_path.exists():
