@@ -51,30 +51,31 @@ def main() -> None:
     while True:
         connection, _client_address = server_socket.accept()  # wait for client
 
-        buffer = connection.recv(ACCEPTED_BUFFSIZE)
+        with connection:
+            buffer = connection.recv(ACCEPTED_BUFFSIZE)
 
-        metadata, *headers = buffer.decode().split("\r\n")
-        _method, path, _version = metadata.split()
+            metadata, *headers = buffer.decode().split("\r\n")
+            _method, path, _version = metadata.split()
 
-        if path == Route.ROOT:
-            response = Response()
+            if path == Route.ROOT:
+                response = Response()
 
-        elif path.startswith(Route.ECHO):
-            random_string = path.replace(Route.ECHO, "", 1)
-            response = Response(data=random_string)
+            elif path.startswith(Route.ECHO):
+                random_string = path.replace(Route.ECHO, "", 1)
+                response = Response(data=random_string)
 
-        elif path.startswith(Route.USER_AGENT):
-            user_agent_header = next(header for header in headers if "User-Agent" in header)
+            elif path.startswith(Route.USER_AGENT):
+                user_agent_header = next(header for header in headers if "User-Agent" in header)
 
-            _header, user_agent = user_agent_header.split(":")
+                _header, user_agent = user_agent_header.split(":")
 
-            response = Response(data=user_agent.strip())
+                response = Response(data=user_agent.strip())
 
-        else:
-            response = Response(Status.NOT_FOUND)
+            else:
+                response = Response(Status.NOT_FOUND)
 
-        connection.send(bytes(response))
-        connection.close()
+            connection.send(bytes(response))
+            connection.close()
 
 
 if __name__ == "__main__":
