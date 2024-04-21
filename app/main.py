@@ -1,10 +1,9 @@
 import argparse
 import enum
-from http import HTTPStatus
+from http import HTTPMethod, HTTPStatus
 import socket
 from pathlib import Path
 from threading import Thread
-from typing import Optional
 
 ACCEPTED_BUFFSIZE = 1024
 """Accepted request buffer size by the socket server."""
@@ -58,13 +57,37 @@ class NotFoundResponse(Response):
         super().__init__(HTTPStatus.NOT_FOUND)
 
 
-def handle_connection(connection: socket.socket, media_directory: Path) -> None:
+def handle_files_route(method: HTTPMethod, filename: str) -> Response:
+    if not MEDIA_DIRECTORY:
+        raise RuntimeError(
+            "/files/ may not be requested without provide --directory argument on the server startup"
+        )
+
+    match method:
+        case HTTPMethod.GET:
+            media_path = MEDIA_DIRECTORY / filename
+
+            if not media_path.exists():
+                return NotFoundResponse()
+
+            with open(media_path, "r") as file:
+                return Response(
+                    data=file.read(), content_type="application/octet-stream"
+                )
+
+        case HTTPMethod.POST:
+            raise NotImplementedError
+
+        case _:
+            return Response(status=HTTPStatus.METHOD_NOT_ALLOWED)
+
+
 def handle_connection(connection: socket.socket) -> None:
     with connection:
         buffer = connection.recv(ACCEPTED_BUFFSIZE)
 
         metadata, *headers = buffer.decode().split("\r\n")
-        _method, path, _version = metadata.split()
+        method, path, _version = metadata.split()
 
         path = path.split("/", 2)
 
@@ -86,17 +109,7 @@ def handle_connection(connection: socket.socket) -> None:
                 response = Response(data=user_agent.strip())
 
             case Route.FILES:
-                filename = path[-1]
-                media_path = MEDIA_DIRECTORY / filename
-
-                if not media_path.exists():
-                    response = NotFoundResponse()
-
-                else:
-                    with open(media_path, "r") as file:
-                        response = Response(
-                            data=file.read(), content_type="application/octet-stream"
-                        )
+                response = handle_files_route(HTTPMethod(method), filename=path[-1])
 
             case _:
                 response = NotFoundResponse()
