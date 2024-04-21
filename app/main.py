@@ -1,7 +1,7 @@
 import argparse
 import enum
-from http import HTTPMethod, HTTPStatus
 import socket
+from http import HTTPMethod, HTTPStatus
 from pathlib import Path
 from threading import Thread
 
@@ -24,9 +24,16 @@ class Route(enum.StrEnum):
 
 class Request:
     def __init__(self, buffer: str) -> None:
-        metadata, *headers = buffer.split("\r\n")
+        buffer_list = buffer.split("\r\n")
 
-        self.method, self.path, self.version = metadata.split()
+        self.body = buffer_list.pop()
+
+        # Remove line break
+        buffer_list.remove("")
+
+        firstline, *headers = buffer_list
+
+        self.method, self.path, self.version = firstline.split()
         self.headers = headers
 
     def get_header(self, header_name: str) -> str:
@@ -78,20 +85,23 @@ def handle_files_route(request: Request, filename: str) -> Response:
             "/files/ may not be requested without provide --directory argument on the server startup"
         )
 
+    media_path = MEDIA_DIRECTORY / filename
+
     match request.method:
         case HTTPMethod.GET:
-            media_path = MEDIA_DIRECTORY / filename
-
             if not media_path.exists():
                 return NotFoundResponse()
 
-            with open(media_path, "r") as file:
+            with open(media_path, mode="r") as file:
                 return Response(
                     data=file.read(), content_type="application/octet-stream"
                 )
 
         case HTTPMethod.POST:
-            raise NotImplementedError
+            with open(media_path, mode="w") as file:
+                file.write(request.body)
+
+                return Response(HTTPStatus.CREATED)
 
         case _:
             return Response(status=HTTPStatus.METHOD_NOT_ALLOWED)
