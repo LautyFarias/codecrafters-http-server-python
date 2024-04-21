@@ -1,5 +1,6 @@
 import argparse
 import enum
+from http import HTTPStatus
 import socket
 from pathlib import Path
 from threading import Thread
@@ -22,21 +23,16 @@ class Route(enum.StrEnum):
     FILES = "files"
 
 
-class Status(enum.StrEnum):
-    OK = "200 OK"
-    NOT_FOUND = "404 Not Found"
-
-
 class Response:
     version = "HTTP/1.1"
 
     def __init__(
         self,
-        status: Status = Status.OK,
+        status: HTTPStatus = HTTPStatus.OK,
         data: str = "",
         content_type: str = "text/plain",
     ) -> None:
-        self.status = status
+        self.status = f"{status} {status.phrase}"
         self.content_type = content_type
 
         self.data = data
@@ -59,7 +55,7 @@ class Response:
 
 class NotFoundResponse(Response):
     def __init__(self) -> None:
-        super().__init__(Status.NOT_FOUND)
+        super().__init__(HTTPStatus.NOT_FOUND)
 
 
 def handle_connection(connection: socket.socket, media_directory: Path) -> None:
