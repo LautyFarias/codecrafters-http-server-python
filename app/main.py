@@ -59,6 +59,7 @@ class NotFoundResponse(Response):
 
 
 def handle_connection(connection: socket.socket, media_directory: Path) -> None:
+def handle_connection(connection: socket.socket) -> None:
     with connection:
         buffer = connection.recv(ACCEPTED_BUFFSIZE)
 
@@ -86,7 +87,7 @@ def handle_connection(connection: socket.socket, media_directory: Path) -> None:
 
             case Route.FILES:
                 filename = path[-1]
-                media_path = media_directory / filename
+                media_path = MEDIA_DIRECTORY / filename
 
                 if not media_path.exists():
                     response = NotFoundResponse()
@@ -103,13 +104,13 @@ def handle_connection(connection: socket.socket, media_directory: Path) -> None:
         connection.send(bytes(response))
 
 
-def main(media_directory: Optional[Path] = None) -> None:
+def main() -> None:
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
 
     while True:
         connection, _client_address = server_socket.accept()  # wait for client
 
-        thread = Thread(target=handle_connection, args=(connection, media_directory))
+        thread = Thread(target=handle_connection, args=(connection,))
         thread.start()
 
 
@@ -126,4 +127,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    main(args.directory)
+    global MEDIA_DIRECTORY
+    MEDIA_DIRECTORY: Path | None = args.directory
+
+    main()
