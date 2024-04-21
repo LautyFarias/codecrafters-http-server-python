@@ -22,6 +22,21 @@ class Route(enum.StrEnum):
     FILES = "files"
 
 
+class Request:
+    def __init__(self, buffer: str) -> None:
+        metadata, *headers = buffer.split("\r\n")
+
+        self.method, self.path, self.version = metadata.split()
+        self.headers = headers
+
+    def get_header(self, header_name: str) -> str:
+        header_line = next(header for header in self.headers if header_name in header)
+
+        _name, value = header_line.split(":")
+
+        return value.strip()
+
+
 class Response:
     version = "HTTP/1.1"
 
@@ -57,13 +72,13 @@ class NotFoundResponse(Response):
         super().__init__(HTTPStatus.NOT_FOUND)
 
 
-def handle_files_route(method: HTTPMethod, filename: str) -> Response:
+def handle_files_route(request: Request, filename: str) -> Response:
     if not MEDIA_DIRECTORY:
         raise RuntimeError(
             "/files/ may not be requested without provide --directory argument on the server startup"
         )
 
-    match method:
+    match request.method:
         case HTTPMethod.GET:
             media_path = MEDIA_DIRECTORY / filename
 
@@ -86,30 +101,22 @@ def handle_connection(connection: socket.socket) -> None:
     with connection:
         buffer = connection.recv(ACCEPTED_BUFFSIZE)
 
-        metadata, *headers = buffer.decode().split("\r\n")
-        method, path, _version = metadata.split()
+        request = Request(buffer.decode())
 
-        path = path.split("/", 2)
+        path = request.path.split("/", 2)
 
         match path[1]:
             case Route.ROOT:
                 response = Response()
 
             case Route.ECHO:
-                random_string = path[-1]
-                response = Response(data=random_string)
+                response = Response(data=path[-1])
 
             case Route.USER_AGENT:
-                user_agent_header = next(
-                    header for header in headers if USER_AGENT_HEADER in header
-                )
-
-                _header, user_agent = user_agent_header.split(":")
-
-                response = Response(data=user_agent.strip())
+                response = Response(data=request.get_header(USER_AGENT_HEADER))
 
             case Route.FILES:
-                response = handle_files_route(HTTPMethod(method), filename=path[-1])
+                response = handle_files_route(request, filename=path[-1])
 
             case _:
                 response = NotFoundResponse()
